@@ -2,7 +2,8 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Icon from '../components/Icon.astro';
 import { RELEASES_URL } from '../consts';
-import { buildLabel, formatReleaseDate, formatSize, loadReleaseData } from '../lib/releases';
+import { buildLabel, formatReleaseDate, formatSize } from '../lib/releases';
+import { loadReleaseData } from '../lib/releases.server';
 
 const { stable, dev, older } = await loadReleaseData();
 
@@ -76,7 +77,7 @@ const engines: Engine[] = [
 					<span class="badge accent">Stable release</span>
 					<span class="badge">Recommended</span>
 				</p>
-				<h2>ETJump {stable.tag}</h2>
+				<h2 data-stable-title>ETJump {stable.tag}</h2>
 				<p class="release__description">
 					The latest stable version, recommended for players and server operators.
 					<br />
@@ -92,7 +93,7 @@ const engines: Engine[] = [
 					))}
 				</ul>
 
-				<p class="release__meta">
+				<p class="release__meta" data-stable-meta>
 					{stableDate && <span>Released {stableDate}</span>}
 					{stableSize && (
 						<span>
@@ -105,18 +106,16 @@ const engines: Engine[] = [
 
 			<div class="release__side">
 				<div class="release__actions">
-					{stable.downloadUrl && (
-						<a class="button" href={stable.downloadUrl}>
-							<Icon name="download" size={18} />
-							Download
-						</a>
-					)}
-					<a class="button secondary" href={stableChangelog}>
+					<a class="button" href={stable.downloadUrl ?? stable.url} data-stable-download hidden={!stable.downloadUrl}>
+						<Icon name="download" size={18} />
+						Download
+					</a>
+					<a class="button secondary" href={stableChangelog} data-stable-changelog>
 						Release notes
 					</a>
 				</div>
 
-				<a class="release__link" href={stable.url}>
+				<a class="release__link" href={stable.url} data-stable-page>
 					View on GitHub
 					<Icon name="arrow" size={14} />
 				</a>
@@ -173,55 +172,61 @@ const engines: Engine[] = [
 		</div>
 
 		<div class="other-releases">
-			{older.length > 0 ? (
-				<div class="release-picker">
-					<div class="release-picker__head">
-						<h3>Old releases</h3>
-						<p>
-							Note that old releases are unsupported. They are provided here for historical reasons. Operating system
-							support varies.
-						</p>
-					</div>
-
-					<label for="release-select">Version</label>
-					<div class="release-picker__controls">
-						<select id="release-select" data-release-select>
-							{older.map((release) => (
-								<option
-									value={release.tag}
-									data-download={release.downloadUrl ?? ''}
-									data-page={release.url}
-									data-date={formatReleaseDate(release.publishedAt) ?? ''}
-									data-size={formatSize(release.size) ?? ''}
-								>
-									ETJump {release.tag}
-								</option>
-							))}
-						</select>
-
-						<a class="button secondary" data-release-download href={older[0].downloadUrl ?? older[0].url}>
-							{older[0].downloadUrl ? `Download ${older[0].tag}` : 'View release'}
-						</a>
-					</div>
-
-					<p class="release-picker__meta">
-						{olderDate && <span data-release-date>{olderDate}</span>}
-						{olderDate && olderSize && (
-							<span data-release-sep aria-hidden="true">
-								·
-							</span>
-						)}
-						{olderSize && <span data-release-size>{olderSize}</span>}
-						<a data-release-page href={older[0].url}>
-							View on GitHub
-						</a>
+			<div class="release-picker" data-release-picker hidden={older.length === 0}>
+				<div class="release-picker__head">
+					<h3>Old releases</h3>
+					<p>
+						Note that old releases are unsupported. They are provided here for historical reasons. Operating system
+						support varies.
 					</p>
 				</div>
-			) : (
-				<p class="muted">
-					Older releases are available on <a href={RELEASES_URL}>GitHub</a>.
+
+				<label for="release-select">Version</label>
+				<div class="release-picker__controls">
+					<select id="release-select" data-release-select>
+						{older.map((release) => (
+							<option
+								value={release.tag}
+								data-download={release.downloadUrl ?? ''}
+								data-page={release.url}
+								data-date={formatReleaseDate(release.publishedAt) ?? ''}
+								data-size={formatSize(release.size) ?? ''}
+							>
+								ETJump {release.tag}
+							</option>
+						))}
+					</select>
+
+					<a
+						class="button secondary"
+						data-release-download
+						href={older[0]?.downloadUrl ?? older[0]?.url ?? RELEASES_URL}
+					>
+						{older[0]?.downloadUrl ? `Download ${older[0].tag}` : 'View release'}
+					</a>
+				</div>
+
+				<p class="release-picker__meta">
+					<span data-release-meta>
+						<span data-release-date hidden={!olderDate}>
+							{olderDate}
+						</span>
+						<span data-release-sep aria-hidden="true" hidden={!(olderDate && olderSize)}>
+							·
+						</span>
+						<span data-release-size hidden={!olderSize}>
+							{olderSize}
+						</span>
+					</span>
+					<a data-release-page href={older[0]?.url ?? RELEASES_URL}>
+						View on GitHub
+					</a>
 				</p>
-			)}
+			</div>
+
+			<p class="muted" data-release-fallback hidden={older.length > 0}>
+				Older releases are available on <a href={RELEASES_URL}>GitHub</a>.
+			</p>
 
 			<article class="release release--dev">
 				<p class="release__eyebrow">
@@ -233,44 +238,75 @@ const engines: Engine[] = [
 					recommended for server operators.
 				</p>
 
-				{dev ? (
-					<>
-						<p class="release__meta">
-							{devBuild && <span class="release__build">{devBuild}</span>}
-							{devDate && <span>Built {devDate}</span>}
-							{devSize && (
-								<span>
-									{devDate && <span aria-hidden="true">·&nbsp;</span>}
-									{devSize}
-								</span>
-							)}
-						</p>
-
-						<div class="release__actions">
-							{dev.downloadUrl && (
-								<a class="button secondary" href={dev.downloadUrl}>
-									<Icon name="download" size={18} />
-									Download build
-								</a>
-							)}
-							<a class="button ghost" href={dev.url}>
-								View release
-								<Icon name="arrow" size={14} />
-							</a>
-						</div>
-					</>
-				) : (
-					<p class="release__unavailable">
-						The development build is unavailable right now. Check the
-						<a href={RELEASES_URL}> releases page</a> on GitHub.
+				<div data-dev-content hidden={!dev}>
+					<p class="release__meta" data-dev-meta>
+						{devBuild && <span class="release__build">{devBuild}</span>}
+						{devDate && <span>Built {devDate}</span>}
+						{devSize && (
+							<span>
+								{devDate && <span aria-hidden="true">·&nbsp;</span>}
+								{devSize}
+							</span>
+						)}
 					</p>
-				)}
+
+					<div class="release__actions">
+						<a
+							class="button secondary"
+							href={dev?.downloadUrl ?? dev?.url ?? RELEASES_URL}
+							data-dev-download
+							hidden={!dev?.downloadUrl}
+						>
+							<Icon name="download" size={18} />
+							Download build
+						</a>
+						<a class="button ghost" href={dev?.url ?? RELEASES_URL} data-dev-page>
+							View release
+							<Icon name="arrow" size={14} />
+						</a>
+					</div>
+				</div>
+
+				<p class="release__unavailable" data-dev-unavailable hidden={!!dev}>
+					The development build is unavailable right now. Check the
+					<a href={RELEASES_URL}> releases page</a> on GitHub.
+				</p>
 			</article>
 		</div>
 	</section>
 </BaseLayout>
 
 <script>
+	import {
+		RELEASES_API,
+		buildLabel,
+		formatReleaseDate,
+		formatSize,
+		selectReleases,
+		toRelease,
+		type GithubRelease,
+		type Release,
+	} from '../lib/releases';
+
+	// The markup is rendered at build time; this only refreshes it from the
+	// GitHub API. A short session cache mirrors the repository activity feed.
+	const cacheKey = 'etj-releases';
+	const cacheTtl = 5 * 60 * 1000;
+
+	const stableTitle = document.querySelector<HTMLElement>('[data-stable-title]');
+	const stableMeta = document.querySelector<HTMLElement>('[data-stable-meta]');
+	const stableDownload = document.querySelector<HTMLAnchorElement>('[data-stable-download]');
+	const stableChangelog = document.querySelector<HTMLAnchorElement>('[data-stable-changelog]');
+	const stablePage = document.querySelector<HTMLAnchorElement>('[data-stable-page]');
+
+	const devContent = document.querySelector<HTMLElement>('[data-dev-content]');
+	const devUnavailable = document.querySelector<HTMLElement>('[data-dev-unavailable]');
+	const devMeta = document.querySelector<HTMLElement>('[data-dev-meta]');
+	const devDownload = document.querySelector<HTMLAnchorElement>('[data-dev-download]');
+	const devPage = document.querySelector<HTMLAnchorElement>('[data-dev-page]');
+
+	const picker = document.querySelector<HTMLElement>('[data-release-picker]');
+	const pickerFallback = document.querySelector<HTMLElement>('[data-release-fallback]');
 	const select = document.querySelector<HTMLSelectElement>('[data-release-select]');
 	const download = document.querySelector<HTMLAnchorElement>('[data-release-download]');
 	const date = document.querySelector<HTMLElement>('[data-release-date]');
@@ -278,30 +314,172 @@ const engines: Engine[] = [
 	const size = document.querySelector<HTMLElement>('[data-release-size]');
 	const page = document.querySelector<HTMLAnchorElement>('[data-release-page]');
 
-	if (select && download) {
-		const update = () => {
-			const option = select.selectedOptions[0];
-			if (!option) return;
-
-			const asset = option.dataset.download;
-			download.href = asset || option.dataset.page || download.href;
-			download.textContent = asset ? `Download ${option.value}` : 'View release';
-
-			if (date) {
-				date.textContent = option.dataset.date ?? '';
-				date.hidden = !option.dataset.date;
-			}
-			if (size) {
-				size.textContent = option.dataset.size ?? '';
-				size.hidden = !option.dataset.size;
-			}
-			if (separator) separator.hidden = !(option.dataset.date && option.dataset.size);
-			if (page && option.dataset.page) page.href = option.dataset.page;
-		};
-
-		select.addEventListener('change', update);
-		update();
+	interface MetaPart {
+		text: string | null;
+		className?: string;
 	}
+
+	const renderMeta = (container: HTMLElement | null, parts: MetaPart[]) => {
+		if (!container) return;
+
+		const children: Node[] = [];
+
+		for (const part of parts) {
+			if (!part.text) continue;
+
+			if (children.length > 0) {
+				const dot = document.createElement('span');
+				dot.setAttribute('aria-hidden', 'true');
+				dot.textContent = '·';
+				children.push(dot);
+			}
+
+			const span = document.createElement('span');
+			if (part.className) span.className = part.className;
+			span.textContent = part.text;
+			children.push(span);
+		}
+
+		container.replaceChildren(...children);
+	};
+
+	const renderStable = (release: Release) => {
+		if (stableTitle) stableTitle.textContent = `ETJump ${release.tag}`;
+
+		renderMeta(stableMeta, [
+			{ text: release.publishedAt ? `Released ${formatReleaseDate(release.publishedAt)}` : null },
+			{ text: formatSize(release.size) },
+		]);
+
+		if (stableDownload) {
+			stableDownload.href = release.downloadUrl ?? release.url;
+			stableDownload.hidden = !release.downloadUrl;
+		}
+
+		if (stableChangelog) {
+			const anchor = release.tag.replaceAll('.', '');
+			stableChangelog.href = `https://github.com/etjump/etjump/blob/dev/changelog.md#etjump-${anchor}`;
+		}
+
+		if (stablePage) stablePage.href = release.url;
+	};
+
+	const renderDev = (release: Release | null) => {
+		if (devContent) devContent.hidden = !release;
+		if (devUnavailable) devUnavailable.hidden = !!release;
+		if (!release) return;
+
+		renderMeta(devMeta, [
+			{ text: buildLabel(release.assetName), className: 'release__build' },
+			{ text: release.publishedAt ? `Built ${formatReleaseDate(release.publishedAt)}` : null },
+			{ text: formatSize(release.size) },
+		]);
+
+		if (devDownload) {
+			devDownload.href = release.downloadUrl ?? release.url;
+			devDownload.hidden = !release.downloadUrl;
+		}
+
+		if (devPage) devPage.href = release.url;
+	};
+
+	const renderOlder = (releases: Release[]) => {
+		if (picker) picker.hidden = releases.length === 0;
+		if (pickerFallback) pickerFallback.hidden = releases.length > 0;
+
+		if (select) {
+			select.replaceChildren(
+				...releases.map((release) => {
+					const option = document.createElement('option');
+					option.value = release.tag;
+					option.dataset.download = release.downloadUrl ?? '';
+					option.dataset.page = release.url;
+					option.dataset.date = formatReleaseDate(release.publishedAt) ?? '';
+					option.dataset.size = formatSize(release.size) ?? '';
+					option.textContent = `ETJump ${release.tag}`;
+					return option;
+				}),
+			);
+
+			select.value = releases[0]?.tag ?? '';
+		}
+
+		updatePicker();
+	};
+
+	function updatePicker() {
+		if (!select || !download) return;
+
+		const option = select.selectedOptions[0];
+		if (!option) return;
+
+		const asset = option.dataset.download;
+		download.href = asset || option.dataset.page || download.href;
+		download.textContent = asset ? `Download ${option.value}` : 'View release';
+
+		if (date) {
+			date.textContent = option.dataset.date ?? '';
+			date.hidden = !option.dataset.date;
+		}
+		if (size) {
+			size.textContent = option.dataset.size ?? '';
+			size.hidden = !option.dataset.size;
+		}
+		if (separator) separator.hidden = !(option.dataset.date && option.dataset.size);
+		if (page && option.dataset.page) page.href = option.dataset.page;
+	}
+
+	const apply = (releases: Release[]) => {
+		const { stable, dev, older } = selectReleases(releases);
+
+		// Without a stable release the build-time snapshot is the best we have.
+		if (stable) renderStable(stable);
+		renderDev(dev);
+		renderOlder(older);
+	};
+
+	const readCache = (): Release[] | null => {
+		try {
+			const raw = sessionStorage.getItem(cacheKey);
+			if (!raw) return null;
+
+			const parsed = JSON.parse(raw) as { at: number; releases: Release[] };
+			return Date.now() - parsed.at < cacheTtl ? parsed.releases : null;
+		} catch {
+			return null;
+		}
+	};
+
+	const writeCache = (releases: Release[]) => {
+		try {
+			sessionStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), releases }));
+		} catch {
+			// Storage can be unavailable; the page still works without it.
+		}
+	};
+
+	const cached = readCache();
+	if (cached) {
+		apply(cached);
+	} else {
+		fetch(RELEASES_API, { headers: { Accept: 'application/vnd.github+json' } })
+			.then((response) => {
+				if (!response.ok) throw new Error(`GitHub responded ${response.status}`);
+				return response.json() as Promise<GithubRelease[]>;
+			})
+			.then((raw) => {
+				const releases = raw.map(toRelease);
+				apply(releases);
+				writeCache(releases);
+			})
+			.catch((error) => {
+				// Keep the build-time snapshot instead of blanking the page.
+				console.warn(`[downloads] Could not refresh releases: ${error}`);
+			});
+	}
+
+	select?.addEventListener('change', updatePicker);
+	updatePicker();
 </script>
 
 <style>
@@ -434,7 +612,9 @@ const engines: Engine[] = [
 		color: var(--etj-muted);
 	}
 
-	.release__build {
+	/* The build label is re-created by the client script, so this rule cannot be
+	   scoped - a client-made span never carries the scope attribute. */
+	:global(.release__build) {
 		color: var(--etj-accent);
 	}
 
@@ -461,6 +641,18 @@ const engines: Engine[] = [
 	.release .release__unavailable {
 		margin-top: 0.9rem;
 		font-size: 0.9rem;
+	}
+
+	/* Author display values beat the UA's [hidden] rule; restore it for links
+	   and blocks that the client script toggles. */
+	.release a[hidden],
+	.release-picker[hidden] {
+		display: none;
+	}
+
+	/* Lets the static date/size spans share the meta row's flex gap. */
+	[data-release-meta] {
+		display: contents;
 	}
 
 	.other-releases {
