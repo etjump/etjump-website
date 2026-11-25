@@ -1,0 +1,31 @@
+---
+title: 'ETJump 3.7.1 released'
+description: 'Just a small bugfix release.'
+pubDate: 2026-11-25
+author: 'Aciz'
+tags: ['etjump', 'release']
+---
+
+A small bugfix release to address some issues found since 3.7.0 release. Nothing too interesting apart from a decade old
+bug with the portalgun, that surfaced very clearly with client-side predicted portal spawning introduced in the last
+release.
+
+- Portalgun could sometimes fire primary portal, when trying to fire secondary portal. If you happened to try to fire
+  secondary portal exactly **200ms** after firing the primary portal, the input reading misbehaved and always fired a
+  primary portal.
+- `func_static_client` entities were not reset when a player disconnected from the server. This caused an issue where
+  the state of the entity could persist to unrelated players - if a player with the client number 10 disconnected, and
+  another player later during the map reused that client slot, they would inherit the state for the entities from the
+  previous client who occupied that slot.
+- `record-details`, `listcheckpoints` and `comparecheckpoints` commands could not target tied records. If two or more
+  players were tied at same rank, these commands could only target the record that was listed first in the rankings.
+- `remove-segment` can no longer perform partial matching of parameters, but requires a full, exact match for each of
+  it's parameters. This makes it behave consistently with `remove-record` and `delete-season`.
+- Demo compatibility fixes for portalgun on old demos:
+  - Secondary portals on demos from ETJump 2.1.0 and earlier were not playing firing animation correctly.
+  - Portals were drawn at wrong sizes for demos recorded in ETJump 3.3.4 and earlier.
+- Trying to call `followspline` mapscript action to a spline point with no target behaved unpredictably - while this is
+  an error on the map and should be fixed, the end result is now consistent and does not randomly place the entity
+  following the spline in a random location.
+
+You can grab the release over at the [downloads page](/downloads).
